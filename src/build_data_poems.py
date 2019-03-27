@@ -38,13 +38,13 @@ CORPUS_PATH = '../data/DB/spanish poems/'
 SPLIT = .9
 
 # NLP
-MAX_SEQ = 160
+MAX_SEQ = 100
 MIN_SEQ = 50
 STRIDE = [5, 15]
 
 # output path
 OUTPUT_PATH = '../data/data_proccessed/'
-OUTPUT_FILE = 'NLP_data_poems_160-50'
+OUTPUT_FILE = 'NLP_data_poems_100-50'
 
 
 
@@ -78,7 +78,7 @@ corpus = read_corpus(CORPUS_PATH)
 # If it is a test mode just take first 25 songs
 if TEST_MODE:
     print("TEST MODE: ON")
-    corpus = corpus[:25]
+    corpus = corpus[:250]
 else:
     print("TEST MODE: OFF")
 

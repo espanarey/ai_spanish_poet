@@ -38,17 +38,17 @@ from keras.models import load_model
 TEST_MODE = False
 
 # Where is the folder with all the corpus docs?
-CORPUS_PATH = '../data/data_proccessed/NLP_data_poems_120-40'
+CORPUS_PATH = '../data/data_proccessed/NLP_data_poems_100-50'
 # NLP
-MAX_SEQ = 120
-MIN_SEQ = 40
+MAX_SEQ = 100
+MIN_SEQ = 50
 
 # Network params
 MODEL_OUTPUT = '../models/'
-MODEL_NAME = 'seq-120_layers-3_hn-512'
-EPOCHS = 5
-BATCH_SIZE = 64
-HIDDEN_NEURONS = 512
+MODEL_NAME = 'seq-100-50_layers-3_hn-768'
+EPOCHS = 10
+BATCH_SIZE = 48
+HIDDEN_NEURONS = 768
 
 
 # =============================================================================
@@ -97,10 +97,10 @@ model.add(Masking(mask_value=-1., input_shape=(train_x.shape[1], train_x.shape[2
 model.add(LSTM(HIDDEN_NEURONS, return_sequences=True))
 model.add(Dropout(0.2))
 # layer 2
-model.add(LSTM(HIDDEN_NEURONS, return_sequences=True)))
+model.add(LSTM(int(HIDDEN_NEURONS/2), return_sequences=True))
 model.add(Dropout(0.2))
 # layer 3
-model.add(LSTM(HIDDEN_NEURONS))
+model.add(LSTM(int(HIDDEN_NEURONS/2)))
 model.add(Dropout(0.2))
 # Final layer
 model.add(Dense(train_y.shape[1], activation='softmax'))
