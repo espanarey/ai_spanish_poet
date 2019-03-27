@@ -2,6 +2,7 @@
 data/DB/*
 data/data_proccessed/*
 notes/*
+models/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
