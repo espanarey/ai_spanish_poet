@@ -20,6 +20,8 @@ import re
 import pickle
 from sklearn.utils import shuffle 
 from keras.utils import np_utils
+import nltk
+
 
 
 
@@ -36,13 +38,13 @@ CORPUS_PATH = '../data/DB/spanish poems/'
 SPLIT = .9
 
 # NLP
-MAX_SEQ = 120
-MIN_SEQ = 40
-STRIDE = [4, 12]
+MAX_SEQ = 160
+MIN_SEQ = 50
+STRIDE = [5, 15]
 
 # output path
 OUTPUT_PATH = '../data/data_proccessed/'
-OUTPUT_FILE = 'NLP_data_poems_120-40'
+OUTPUT_FILE = 'NLP_data_poems_160-50'
 
 
 
@@ -84,7 +86,7 @@ else:
 # Some Stats and Data Cleansing
 # =============================================================================
 
-# Character per doc.
+############ Character per doc.
 chars = [len(x['corpus']) for x in corpus]
 print('\nCharacters per doc:\n', pd.Series(chars).describe())
 # remove outliers, less than 260 characters
@@ -93,7 +95,7 @@ print('docs removed:', len(corpus) - sum(idx))
 corpus = list(np.array(corpus)[np.array(idx)])
 
 
-# lines per doc, remove single liners
+############ lines per doc, remove single liners
 lines = [len(x['corpus'].split('\n')) for x in corpus]
 print('\nLines per doc:\n', pd.Series(lines).describe())
 # remove outliers. less than 10 lines
@@ -102,7 +104,7 @@ print('docs removed:', len(corpus) - sum(idx))
 corpus = list(np.array(corpus)[np.array(idx)])
 
 
-# words count.
+############ words count.
 words = [len(re.findall(r'\w+', x['corpus'])) for x in corpus]
 print('\nwords per doc:\n', pd.Series(words).describe())
 # remove outliers
@@ -111,8 +113,25 @@ idx = [((x > 30) & (x < 200)) for x in words]
 print('docs removed:', len(corpus) - sum(idx))
 corpus = list(np.array(corpus)[np.array(idx)])
 
-print('\nNew docs in corpus', len(corpus))
+words = [re.findall(r'\w+', x['corpus']) for x in corpus]
+# flat list into single array to count frequency
+words = [item for sublist in words for item in sublist]
 
+print('\nTotal words in corpus', len(words))
+print('\nUnique words:', len(set(words)))
+
+# most common words couont
+words_counter = nltk.FreqDist(words)
+words_counter = pd.DataFrame(words_counter.most_common())
+words_counter.columns = ['words', 'freq']
+words_counter['len'] = [len(x) for x in words_counter['words']]
+print('\Most common words:', '\nat least 4 digits:\n',
+      words_counter[['words','freq']][words_counter['len']>=4].head(10),
+      '\nat least 6 digits:\n',
+      words_counter[['words','freq']][words_counter['len']>=6].head(10))
+ 
+
+##### Clean less frecuent characters
 # unique characters count. character unique songs
 # put together all the text to take unique characters
 def merge_corpus(corpus):
@@ -216,8 +235,9 @@ idx_test = [i for i in idx if i not in idx_train]
 corpus_train = [corpus[i] for i in idx_train]
 corpus_test = [corpus[i] for i in idx_test]
 
-print('split corpus docs:', len(corpus),
-      '\ntrain:', len(corpus_train), '- test:', len(corpus_test))
+# Docs stats corpus
+print('\n--- Total docs in corpus', len(corpus))
+print('split in:', 'Train:', len(corpus_train), '- Test:', len(corpus_test))
 
 
 
@@ -239,6 +259,7 @@ def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride =
     # place holder to  save results
     data_x = []
     data_y = []
+    sequences = []
     # for each document in corpus
     for i in range(len(corpus)):
         if (i % int(len(corpus)/10) == 0):
@@ -249,11 +270,16 @@ def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride =
         j = 0
         while j < (text_length - min_seq):
             # Sequence lenght between max and min
-            seq_length = int(np.random.normal((max_seq + min_seq)/2, (max_seq+min_seq)/6))
+            seq_length = int(np.random.normal(max_seq*1.2, max_seq*.2))
             seq_length = min(max_seq, max(min_seq, seq_length))
             # get text sequence
             # print('from:', j, 'to:', min(text_length, j + seq_length))
             sequence = text[j:min(text_length-1, j + seq_length)]
+            # do not cut the first word. always start with a full word
+            # when the first word starts (look the first space or)
+            first_word = np.argmax([x==' ' for x in sequence])
+            # cut sequence
+            sequence = sequence[first_word+1:]            
             sequence_encoded = [char_to_n[char] for char in sequence]
             sequence_encoded = np.reshape(sequence_encoded, (len(sequence),1))
             # use sequence placeholder to fill in nans
@@ -263,6 +289,7 @@ def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride =
             label = text[min(text_length-1, j + seq_length)]
             label_decoded = char_to_n[label]
             # append results
+            sequences.append(sequence)
             data_x.append(sequence_x)
             data_y.append(label_decoded)
             # random stride between 1-6
@@ -296,7 +323,6 @@ print('\nBuild Test data:')
 test_x, test_y = build_data(corpus_test,
                             normalized_by=len(characters),
                             max_seq = MAX_SEQ, min_seq = MIN_SEQ, stride=STRIDE)
-
 
 
 
