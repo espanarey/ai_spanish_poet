@@ -10,12 +10,6 @@ Then, train it to write poems trough transfer learning technique
 
 source: https://www.analyticsvidhya.com/blog/2018/03/text-generation-using-python-nlp/
 
-
-watch nvidia-smi
-
-screen -S sessionname (assign name to session)
-screen -r (list of session)
-screen -x (resume)
 """
 
 
@@ -152,22 +146,35 @@ print('Model saved in: ', str(MODEL_OUTPUT + MODEL_NAME + '.h5'))
 # =============================================================================
 # Test Example
 # =============================================================================
+#class poem():
+    
 # Extract random sentence from corpus
 def random_sentence(corpus, min_seq=64, max_seq=128):
     # use random sentence from corpus as seed
     doc = np.random.choice(corpus, 1)[0]
     text = doc['corpus']
-    # random character to start
-    # TODO: do not cut words
-    idx_from = max(0, int(np.random.uniform(0, len(text)) - min_seq))
-    # length of sequence to use as seed
-    seq_length = int(np.random.uniform(min_seq, max_seq))
-    # initial sentence
-    sequence = text[idx_from:min(len(text), idx_from+seq_length)]
-    return sequence
+    text_lines = text.split('\n')
+    # select first lines till min_seq constraint is reached
+    length = 0
+    i=0
+    sequence = str()
+    while length <= min_seq:
+        sequence = sequence + text_lines[i] + '\n'
+        length = len(sequence)
+        i+=1
+    if length > max_seq:
+        sequence = sequence[:max_seq]
+    return text, sequence
 
 # predict next character
 def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normalized_by=None, nans=-1.):
+    # cut sequence into max length allowed   
+    sequence = sequence[max(0, len(sequence)-max_seq):] 
+    # do not cut the first word. always start with a full word
+    # when the first word starts (look the first space or)
+    first_word = np.argmax([x==' ' for x in sequence])
+    # cut sequence
+    sequence = sequence[first_word+1:]   
     # transform sentence to numeric
     sequence_encoded = [char_to_n[char] for char in sequence]
     sequence_encoded = np.reshape(sequence_encoded, (len(sequence), 1))
@@ -187,22 +194,41 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normal
     return pred_char
 
 
+def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, 
+               normalized_by=None, nans=-1., max_words=150):
+    poem = seed
+    # word count
+    word_counter = len(re.findall(r'\w+', poem))
+    # ends poem generator if max word is passed or poem end with final dot ($)
+    while (word_counter < max_words) | (poem[-1]=='$'):    
+        # Prediction next character    
+        next_char = predict_next_char(poem,
+                                      n_to_char, char_to_n, model,
+                                      max_seq, normalized_by)
+        # append
+        poem = poem + next_char
+        # update word count
+        word_counter = len(re.findall(r'\w+', poem))
+    # add signature
+    poem = poem + '\n\nEscrito por: AISP'
+    return poem
+        
+    
+    
+    
 
 
-
-# TODO: predict entire text
-
-# string_mapped.append(pred_index)
-# string_mapped = string_mapped[1:len(string_mapped)]
-
+# Generate poem
 
 # random sentence to use as initial seed for the model
-sequence = random_sentence(corpus, min_seq=64, max_seq=MAX_SEQ)
-print('sentence:\n', sequence)
-next_char = predict_next_char(sequence,
-                              n_to_char, char_to_n, model,
-                              max_seq=MAX_SEQ, normalized_by=len(characters))
-print('\nnext char:', next_char)
+text, sequence = random_sentence(corpus, min_seq=64, max_seq=MAX_SEQ)
+print('\nOriginal poem:\n\n', text)
+print('\nSeed Sentence:\n\n', sequence)
+
+poem = write_poem(sequence, model,  n_to_char, char_to_n, max_seq=MAX_SEQ, 
+                  normalized_by=len(characters),  max_words=60)
+
+print('\nThis is an AI poem:\n\n', poem)
 
 
 
@@ -225,3 +251,4 @@ model = load_model(str(MODEL_OUTPUT + MODEL_NAME + '.h5'))
 # input data structure
 # 'te escribo el siguiente poema\naunque no sea un humano.\n'
 # output
+
