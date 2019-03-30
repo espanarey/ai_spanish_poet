@@ -72,14 +72,14 @@ def remove_stopwords(text: str, tokenizer: nltk.tokenize.toktok.ToktokTokenizer)
     return filtered_text
 
 
-def process_corpus(path: str, corpus_size: int = 20000) -> list:
+def process_corpus(path: str, corpus_size: int = 100000) -> list:
     """
     Read the all text files present in the path and applies text cleansing
     :param path: path where to look for text files
     :param corpus_size: corpus size, required to limit the dataset
     :return: corpus of data
     """
-    files = os.listdir(path)[1:corpus_size]
+    files = os.listdir(path)[0:corpus_size]
     corpus = []
 
     for file in files:
