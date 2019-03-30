@@ -38,8 +38,9 @@ def remove_special_characters(text: str) -> str:
     """
     for i_pattern in ['\r\r\n', '\r\n ', '\r\n', '\n\n']:  # line space: '\r\n ' '\r\n' to '\n', '\r\r\n'
         text = re.sub(i_pattern, '\n', text)
-    text = re.sub(' +', ' ', text).strip()
-    text = re.sub('[^a-z\n ]', '', text)
+    text = re.sub(r'/[^\S\r\n]/', ' ', text).strip()
+    text = re.sub(' +', ' ', text)
+    text = re.sub('[^a-z \n]', '', text)
 
     return text
 
@@ -77,7 +78,7 @@ def process_corpus(path: str) -> list:
     :param path: path where to look for text files
     :return: corpus of data
     """
-    files = os.listdir(path)[1:10]
+    files = os.listdir(path)[1:10]  # TODO: remove once pipeline properly implemented
     corpus = []
 
     for file in files:
@@ -85,12 +86,12 @@ def process_corpus(path: str) -> list:
             document = text_file.read()
             document = document.decode('latin-1')
             document = document.lower()
-            document = re.sub(' +', ' ', document).strip()
             document = remove_accented_chars(text=document)
             document = remove_special_characters(text=document)
             document = lemmatize_text(text=document, lemmatizer=nlp)
             # document = remove_stopwords(text=document, tokenizer=tokenizer)
-            document = document.split()
+            document = document.split(' ')
+            document = [word for word in document if word != '']
             corpus.append({'file': path + file, 'text': document})
 
     return corpus
@@ -114,9 +115,9 @@ def create_vocabulary(text_corpus: list) -> list:
 corpus = process_corpus(corpus_path)
 vocabulary = create_vocabulary(corpus)
 
-n_to_word = {n: word for n, word in enumerate(vocabulary)}
-word_to_n = {word: n for n, word in enumerate(vocabulary)}
-words_mapping = {'vocabulary': vocabulary, 'n_to_word': n_to_word, 'word_to_n': word_to_n}
+    n_to_word = {n: word for n, word in enumerate(vocabulary)}
+    word_to_n = {word: n for n, word in enumerate(vocabulary)}
+    #words_mapping = {'vocabulary': vocabulary, 'n_to_word': n_to_word, 'word_to_n': word_to_n}
 
 # all songs as single string
 all_text = merge_corpus(corpus)
