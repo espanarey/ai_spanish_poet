@@ -3,7 +3,7 @@ import numpy as np
 import os
 import re
 import pickle
-from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
 
 import nltk
 import spacy
@@ -96,38 +96,28 @@ def process_corpus(path: str) -> list:
     return corpus
 
 
-#%% Data load and pre-processing
+def create_vocabulary(text_corpus: list) -> list:
+    """
+    Creates vocabulary of unique words present in the corpus
+    :param text_corpus: corpus to use as vocabulary base
+    :return: vocabulary
+    """
+    all_words = list()
+    for element in text_corpus:
+        all_words.append(element['text'])
+    all_words = [item for sublist in all_words for item in sublist]
+    vocabulary = sorted(list((set(all_words))))
+
+    return vocabulary
+
+
+#%% Corpus and vocabulary
 corpus = process_corpus(corpus_path)
+vocabulary = create_vocabulary(corpus)
 
-
-
-#%%
-def merge_corpus(corpus):
-    all_text = str()
-    for x in corpus:
-        all_text = all_text + x['text']
-    print('Number of characters in corpus:', len(all_text))
-    return all_text
-
-# all songs as single string
-all_text = merge_corpus(corpus)
-# unique characters
-characters = sorted(list(set(all_text)))
-print('unique characters:', len(characters))
-
-
-# =============================================================================
-# character/word mappings
-# =============================================================================
-'''
-Mapping is a step in which we assign an arbitrary number to a character/word
-in the text. In this way, all unique characters/words are mapped to a number.
-This is important, because machines understand numbers far better than text,
- and this subsequently makes the training process easier.
-'''
-
-# create dictionaries for character/number mapping
-print('\n---\nCreating word mapping dictionaries')
+n_to_word = {n: word for n, word in enumerate(vocabulary)}
+word_to_n = {word: n for n, word in enumerate(vocabulary)}
+words_mapping = {'vocabulary': vocabulary, 'n_to_word': n_to_word, 'word_to_n': word_to_n}
 
 # all songs as single string
 all_text = merge_corpus(corpus)
