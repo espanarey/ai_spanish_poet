@@ -15,7 +15,7 @@ nlp = spacy.load('es', parse=False, tag=False, entity=False)
 
 # Parameters
 corpus_path = 'data/DB/spanish poems/'
-output_path = '../data/data_proccessed/'
+output_path = 'data/data_proccessed/'
 output_file = 'npl_words__seq_len_5'
 
 
