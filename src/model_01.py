@@ -1,8 +1,6 @@
 #%% Import and function declaration
 from __future__ import absolute_import, division, print_function
 
-import os
-import time
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,7 +25,7 @@ def build_model(vocabulary_size: int, embedding_dim: int, rnn_units:int, rnn_lay
     model.add(tf.keras.layers.Embedding(vocabulary_size, embedding_dim, batch_input_shape=[batch_size, None]))
 
     for layer in range(rnn_layers):
-        model.add(tf.keras.layers.LSTM(rnn_units, return_sequences=True, stateful=True,
+        model.add(tf.keras.layers.LSTM(rnn_units, return_sequences=True, stateful=False,
                                        recurrent_initializer='glorot_uniform'))
 
     model.add(tf.keras.layers.Dense(vocabulary_size))
@@ -59,7 +57,6 @@ print('The shapes are: \n X_train: {a} | y_train: {b} \n X_test: {c}, y_test: {d
 
 
 #%% Model Definition
-
 epochs = 30
 batch_size = 512
 rnn_units = 512
@@ -71,7 +68,7 @@ embedding_dim = 128
 model = build_model(vocabulary_size=vocabulary_size, embedding_dim=embedding_dim, rnn_units=rnn_units,
                     rnn_layers=rnn_layers, batch_size=batch_size)
 
-model.compile(optimizer='adam', loss=loss, metrics=['accuracy'])
+model.compile(optimizer='adam', loss=loss)
 
 checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=models_path + "model_01__" +
                                                        "epoch_{epoch}__val_loss_{val_loss}", save_weights_only=False)
@@ -79,10 +76,14 @@ reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2,
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.05, patience=3, verbose=1)
 
 #%% Model training
-history = model.fit(x=X_train, y=y_train, batch_size=batch_size, epochs=epochs,
-                    validation_split=0.15, callbacks=[checkpoint, reduce_lr, early_stopping])
+history = model.fit(x=X_train,
+                    y=y_train,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    validation_split=0.15,
+                    callbacks=[checkpoint, reduce_lr, early_stopping])
 
-#TODO: done till here 
+#TODO: done till here
 #%% Not processed
 
 # Training history
