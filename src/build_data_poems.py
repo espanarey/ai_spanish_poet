@@ -106,9 +106,8 @@ def create_vocabulary(text_corpus: list) -> list:
     for element in text_corpus:
         all_words.append(element['text'])
     all_words = [item for sublist in all_words for item in sublist]
-    vocabulary = sorted(list((set(all_words))))
 
-    return vocabulary
+    return sorted(list((set(all_words))))
 
 
 #%% Corpus and vocabulary
