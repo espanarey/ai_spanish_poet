@@ -1,9 +1,8 @@
-#%% Imports and function declaration
+#%% Import and function declaration
 import numpy as np
 import os
 import re
 import pickle
-from sklearn.model_selection import train_test_split
 
 import nltk
 import spacy
@@ -16,7 +15,8 @@ nlp = spacy.load('es', parse=False, tag=False, entity=False)
 # Parameters
 corpus_path = 'data/DB/spanish poems/'
 output_path = 'data/data_proccessed/'
-output_file = 'npl_words__seq_len_5'
+seq_length = 5
+output_file = 'npl_words__seq_len_'+str(seq_length)
 
 
 def remove_accented_chars(text: str) -> str:
@@ -38,7 +38,7 @@ def remove_special_characters(text: str) -> str:
     """
     for i_pattern in ['\r\r\n', '\r\n ', '\r\n', '\n\n']:  # line space: '\r\n ' '\r\n' to '\n', '\r\r\n'
         text = re.sub(i_pattern, '\n', text)
-    text = re.sub(r'/[^\S\r\n]/', ' ', text).strip()
+    text = re.sub(r'/[^\S\r\n]/', ' ', text).strip()  # spacing characters except '\n'
     text = re.sub(' +', ' ', text)
     text = re.sub('[^a-z \n]', '', text)
 
@@ -72,13 +72,14 @@ def remove_stopwords(text: str, tokenizer: nltk.tokenize.toktok.ToktokTokenizer)
     return filtered_text
 
 
-def process_corpus(path: str) -> list:
+def process_corpus(path: str, corpus_size: int = 20000) -> list:
     """
     Read the all text files present in the path and applies text cleansing
     :param path: path where to look for text files
+    :param corpus_size: corpus size, required to limit the dataset
     :return: corpus of data
     """
-    files = os.listdir(path)[1:10]  # TODO: remove once pipeline properly implemented
+    files = os.listdir(path)[1:corpus_size]
     corpus = []
 
     for file in files:
@@ -111,144 +112,78 @@ def create_vocabulary(text_corpus: list) -> list:
     return sorted(list((set(all_words))))
 
 
-#%% Corpus and vocabulary
+def map_corpus(text_corpus: list, words_mapper: dict) -> list:
+    """
+    Maps a corpus to a given words mapper
+    :param text_corpus: corpus of text to be mapped
+    :param words_mapper: mapper used to translate words into integers
+    :return: corpus mapped
+    """
+    num_corpus = []
+    for element in text_corpus:
+        num_corpus.append([words_mapper[word] for word in element['text']])
+
+    return num_corpus
+
+
+def create_dataset(numerical_corpus: list, sequence_length: int, target_words_stride: int = 1) -> list:
+    """
+    Given a numerical corpus, it generates the dataset for training
+    :param numerical_corpus: corpus already mapped into integers
+    :param sequence_length: sequence length being fed into the algorithm
+    :param target_words_stride: number of words we displace between the train data and the target
+    :return: dataset properly formated for training
+    """
+    dataset = []
+
+    for document in numerical_corpus:
+        document_data = []
+        num_splits = (len(document)-target_words_stride) // sequence_length
+
+        for i_step in range(num_splits):
+            if i_step == 0:
+                i_position = 0
+            else:
+                i_position += sequence_length
+            document_data.append([
+                document[i_position:(i_position + sequence_length)],
+                document[(i_position + target_words_stride):(i_position + sequence_length + target_words_stride)]])
+
+        dataset.append(document_data)
+
+    return [item for sublist in dataset for item in sublist]
+
+
+def split_train_test(dataset: list, train_ratio: float = 0.9) -> tuple:
+    """
+    Splits the dataset into train/test split based on the selected ratio
+    :param dataset: dataset already processed in to neural net format
+    :param train_ratio: ratio of the total data used for training
+    :return: train_data and test_data
+    """
+    idx = [i for i in range(len(dataset))]
+    idx_train = np.random.choice(idx, size=int(len(dataset) * train_ratio), replace=False)
+    idx_test = [i for i in idx if i not in idx_train]
+    dataset_train = [dataset[i] for i in idx_train]
+    dataset_test = [dataset[i] for i in idx_test]
+
+    print('Corpus Docs:', len(corpus), '\nTrain data:', len(dataset_train), '- Test data:', len(dataset_test))
+    return dataset_train, dataset_test
+
+
+#%% Main program
 corpus = process_corpus(corpus_path)
 vocabulary = create_vocabulary(corpus)
 
-    n_to_word = {n: word for n, word in enumerate(vocabulary)}
-    word_to_n = {word: n for n, word in enumerate(vocabulary)}
-    #words_mapping = {'vocabulary': vocabulary, 'n_to_word': n_to_word, 'word_to_n': word_to_n}
+map_n_to_word = {n: word for n, word in enumerate(vocabulary)}
+map_word_to_n = {word: n for n, word in enumerate(vocabulary)}
+corpus_mapped = map_corpus(text_corpus=corpus, words_mapper=map_word_to_n)
 
-# all songs as single string
-all_text = merge_corpus(corpus)
-# unique characters
-characters = sorted(list(set(all_text)))
-print('unique characters after cleansing', len(characters))
-print(''.join(characters))
+dataset = create_dataset(numerical_corpus=corpus_mapped, sequence_length=seq_length)
+train_data, test_data = split_train_test(dataset=dataset, train_ratio=0.8)
 
-# dictionaries to be used as index mapping
-n_to_char = {n:char for n, char in enumerate(characters)}
-char_to_n = {char:n for n, char in enumerate(characters)}
+data = {'corpus': corpus, 'words_mapping': map_n_to_word, 'train_data': train_data , 'test_data' : test_data}
 
-# TODO: mapping used as part of the model
-words_mapping = {'characters': characters,
-                'n_to_char': n_to_char,
-                'char_to_n': char_to_n}
-
-
-
-
-# =============================================================================
-# split train and test
-# =============================================================================
-# Train/Test per doc
-# create corpus index
-idx = [i for i in range(len(corpus))]
-# random random for train
-idx_train = np.random.choice(idx, size=int(len(corpus) * train_test_split), replace=False)
-# index not in train
-idx_test = [i for i in idx if i not in idx_train]
-# split corpus by index
-corpus_train = [corpus[i] for i in idx_train]
-corpus_test = [corpus[i] for i in idx_test]
-
-print('split corpus docs:', len(corpus),
-      '\ntrain:', len(corpus_train), '- test:', len(corpus_test))
-
-
-
-# =============================================================================
-# Build Tensor Data
-# =============================================================================
-# TODO: do not cut the first word, do not start with blank space
-
-# Create tensor data from corpus
-def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride = [1,6], nans=-1.):
-    '''
-    Transform list of documents into tensor format to be fed to a lstm network
-    outout shape: (sequences, max_lenght, 1)
-    max_seq: maximum length of sequence
-    min_seq: minimun character per sequence, rest is fill with NAs
-    stride: steps apply in rolling window over text. next windows could be next character(1) or 6 characters ahead
-    normalized_by: if not None, values are normalized by the number of unique characters in the corpus
-    '''
-    # place holder to  save results
-    data_x = []
-    data_y = []
-    # for each document in corpus
-    for i in range(len(corpus)):
-        if (i % int(len(corpus)/10) == 0):
-            print('\n--- Progress %:{0:.2f}'.format(i/len(corpus)))
-        text = corpus[i]['corpus']
-        text_length = len(text)
-        # start with a index before 0 else first characters will appear only once
-        j = 0
-        while j < (text_length - min_seq):
-            # Sequence lenght between max and min
-            seq_length = int(np.random.normal((max_seq + min_seq)/2, (max_seq+min_seq)/6))
-            seq_length = min(max_seq, max(min_seq, seq_length))
-            # get text sequence
-            # print('from:', j, 'to:', min(text_length, j + seq_length))
-            sequence = text[j:min(text_length-1, j + seq_length)]
-            sequence_encoded = [char_to_n[char] for char in sequence]
-            sequence_encoded = np.reshape(sequence_encoded, (len(sequence),1))
-            # use sequence placeholder to fill in nans
-            sequence_x = np.full((max_seq, 1), np.nan, dtype=np.float32)
-            sequence_x[len(sequence_x)-len(sequence_encoded):] = sequence_encoded
-            # next character as target variable
-            label = text[min(text_length-1, j + seq_length)]
-            label_decoded = char_to_n[label]
-            # append results
-            data_x.append(sequence_x)
-            data_y.append(label_decoded)
-            # random stride between 1-6
-            j+=int(np.random.uniform(stride[0], stride[1]+1))
-    # Tensor structure
-    data_x = np.reshape(data_x, (len(data_x), max_seq, 1))
-    # Normalized data
-    if normalized_by is not None:
-        data_x = data_x / float(normalized_by)
-    # replace nans by -1
-    data_x[np.isnan(data_x)] = nans
-    # target variable to categorical dummy
-    data_y = np_utils.to_categorical(data_y)
-    # Shuffle data:
-    data_x, data_y = shuffle(data_x, data_y)
-    # output
-    print('Outupt shape -', 'X:', data_x.shape, '- Y:', data_y.shape)
-    size = data_x.nbytes*1e-6 + data_y.nbytes*1e-6
-    size = print(int(size), 'Megabytes')
-    return data_x, data_y
-
-# Train datasets
-print('\n---\nBuild Tensor data')
-
-print('\nBuild Train data:')
-train_x, train_y = build_data(corpus_train,
-                              normalized_by=len(characters),
-                              max_seq = MAX_SEQ, min_seq = MIN_SEQ, stride=STRIDE)
-
-print('\nBuild Test data:')
-test_x, test_y = build_data(corpus_test,
-                            normalized_by=len(characters),
-                            max_seq = MAX_SEQ, min_seq = MIN_SEQ, stride=STRIDE)
-
-
-
-
-# =============================================================================
-# Save proccess data
-# =============================================================================
-
-# Merge all data in one dict
-data = {'corpus': corpus,
-        'words_mapping': words_mapping,
-        'train_x': train_x ,
-        'train_y': train_y,
-        'test_x' : test_x,
-        'test_y' : test_y}
-
-# save file
-with open(output_path + OUTPUT_FILE + '.pickle', 'wb') as file:
+with open(output_path + output_file + '.pickle', 'wb') as file:
     pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
-print('Data saved in:', output_path + OUTPUT_FILE + '.pickle')
+print('Data saved in:', output_path + output_file + '.pickle')
