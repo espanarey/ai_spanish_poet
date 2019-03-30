@@ -90,6 +90,7 @@ def process_corpus(path: str) -> list:
             document = remove_special_characters(text=document)
             document = lemmatize_text(text=document, lemmatizer=nlp)
             # document = remove_stopwords(text=document, tokenizer=tokenizer)
+            document = document.split()
             corpus.append({'file': path + file, 'text': document})
 
     return corpus
@@ -100,8 +101,19 @@ corpus = process_corpus(corpus_path)
 
 
 
+#%%
+def merge_corpus(corpus):
+    all_text = str()
+    for x in corpus:
+        all_text = all_text + x['text']
+    print('Number of characters in corpus:', len(all_text))
+    return all_text
 
-
+# all songs as single string
+all_text = merge_corpus(corpus)
+# unique characters
+characters = sorted(list(set(all_text)))
+print('unique characters:', len(characters))
 
 
 # =============================================================================
