@@ -17,16 +17,12 @@ source: https://www.analyticsvidhya.com/blog/2018/03/text-generation-using-pytho
 # Libraries
 # =============================================================================
 
-# TODO: create env and .yml
 import numpy as np
-import pandas as pd
 import pickle
 import re
 import matplotlib.pyplot as plt
-from sklearn.utils import shuffle # install
-from keras.utils import np_utils
 from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout, Masking
+from keras.layers import Dense, LSTM, Dropout, Masking, Embedding
 from keras.callbacks import EarlyStopping
 from keras.models import load_model
 
@@ -45,10 +41,10 @@ MIN_SEQ = 50
 
 # Network params
 MODEL_OUTPUT = '../models/'
-MODEL_NAME = 'seq-100-50_layers-3_hn-768'
-EPOCHS = 10
-BATCH_SIZE = 48
-HIDDEN_NEURONS = 768
+MODEL_NAME = 'seq-100-50_layers-3_hn-600_batch-128'
+EPOCHS = 15
+BATCH_SIZE = 128
+HIDDEN_NEURONS = 600
 
 
 # =============================================================================
@@ -90,35 +86,37 @@ size = print(int(size), 'Megabytes')
 # =============================================================================
 print('\n---\nModel network')
 
+# build model
 model = Sequential()
+# construct inputs
 # Mask parts of the lookback period that are all zeros (i.e., unobserved) so they don't skew the model
-model.add(Masking(mask_value=-1., input_shape=(train_x.shape[1], train_x.shape[2])))
+model.add(Masking(mask_value=-1, input_shape=(None, train_x.shape[2])))
 # layer 1
-model.add(LSTM(HIDDEN_NEURONS, return_sequences=True))
-model.add(Dropout(0.2))
+model.add(LSTM(256, return_sequences=True, consume_less='gpu',
+               recurrent_activation='sigmoid'))
+model.add(Dropout(0.25))
 # layer 2
-model.add(LSTM(int(HIDDEN_NEURONS/2), return_sequences=True))
-model.add(Dropout(0.2))
+model.add(LSTM(256, return_sequences=True, consume_less='gpu',
+               recurrent_activation='sigmoid'))
+model.add(Dropout(0.25))
 # layer 3
-model.add(LSTM(int(HIDDEN_NEURONS/2)))
-model.add(Dropout(0.2))
+model.add(LSTM(train_y.shape[1], return_sequences=False, consume_less='cpu',
+               recurrent_activation='sigmoid', activation='softmax' ))
 # Final layer
 model.add(Dense(train_y.shape[1], activation='softmax'))
 # compile
 model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
+              optimizer='RMSprop', # RMSprop, adam
               metrics=['accuracy'])
 
 print(model.summary())
 
-# TODO: add extra dense layer before last layer
 
 # =============================================================================
 # Train with Songs
 # =============================================================================
 # callbacks
-# TODO: val_set
-early_stop = EarlyStopping(monitor='val_loss', min_delta=0.1, patience=2, verbose=1)
+early_stop = EarlyStopping(monitor='val_loss', min_delta=0.05, patience=2, verbose=1)
 
 # Fit!
 model_history = model.fit(train_x, train_y,
@@ -167,7 +165,7 @@ def random_sentence(corpus, min_seq=64, max_seq=128):
     return text, sequence
 
 # predict next character
-def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normalized_by=None, nans=-1.):
+def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normalized_by=None, nans=0):
     # cut sequence into max length allowed   
     sequence = sequence[max(0, len(sequence)-max_seq):] 
     # do not cut the first word. always start with a full word
@@ -183,7 +181,7 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normal
     sequence_x[len(sequence_x)-len(sequence_encoded):] = sequence_encoded
     # Normalized
     if normalized_by is not None:
-        sequence_x = sequence_x / float(normalized_by)
+        sequence_x = (sequence_x + 1) / float(normalized_by)
     # replace nans by -1
     sequence_x[np.isnan(sequence_x)] = nans
     # reshape on tensor format
@@ -195,12 +193,12 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, normal
 
 
 def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, 
-               normalized_by=None, nans=-1., max_words=150):
+               normalized_by=None, nans=0, max_words=150):
     poem = seed
     # word count
     word_counter = len(re.findall(r'\w+', poem))
     # ends poem generator if max word is passed or poem end with final dot ($)
-    while (word_counter < max_words) | (poem[-1]=='$'):    
+    while (word_counter < max_words) | (poem[-1]=='$') | (len(poem) < 1000):    
         # Prediction next character    
         next_char = predict_next_char(poem,
                                       n_to_char, char_to_n, model,

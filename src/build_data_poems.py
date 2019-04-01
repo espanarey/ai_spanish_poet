@@ -23,8 +23,6 @@ from keras.utils import np_utils
 import nltk
 
 
-
-
 # =============================================================================
 # Input arguments
 # =============================================================================
@@ -244,10 +242,9 @@ print('split in:', 'Train:', len(corpus_train), '- Test:', len(corpus_test))
 # =============================================================================
 # Build Tensor Data
 # =============================================================================
-# TODO: do not cut the first word, do not start with blank space
 
 # Create tensor data from corpus
-def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride = [1,6], nans=-1.):
+def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride = [1,6], nans=0):
     '''
     Transform list of documents into tensor format to be fed to a lstm network
     outout shape: (sequences, max_lenght, 1)
@@ -262,7 +259,7 @@ def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride =
     sequences = []
     # for each document in corpus
     for i in range(len(corpus)):
-        if (i % int(len(corpus)/10) == 0):
+        if (i % max(1, int(len(corpus)/10)) == 0):
             print('\n--- Progress %:{0:.2f}'.format(i/len(corpus)))
         text = corpus[i]['corpus']
         text_length = len(text)
@@ -279,32 +276,33 @@ def build_data(corpus, normalized_by=None, max_seq = 128, min_seq = 64, stride =
             # when the first word starts (look the first space or)
             first_word = np.argmax([x==' ' for x in sequence])
             # cut sequence
-            sequence = sequence[first_word+1:]            
-            sequence_encoded = [char_to_n[char] for char in sequence]
-            sequence_encoded = np.reshape(sequence_encoded, (len(sequence),1))
-            # use sequence placeholder to fill in nans
-            sequence_x = np.full((max_seq, 1), np.nan, dtype=np.float32)
-            sequence_x[len(sequence_x)-len(sequence_encoded):] = sequence_encoded
-            # next character as target variable
-            label = text[min(text_length-1, j + seq_length)]
-            label_decoded = char_to_n[label]
-            # append results
-            sequences.append(sequence)
-            data_x.append(sequence_x)
-            data_y.append(label_decoded)
+            sequence = sequence[first_word+1:]
+            if len(sequence) >= min_seq:       
+                sequence_encoded = [char_to_n[char] for char in sequence]
+                sequence_encoded = np.reshape(sequence_encoded, (len(sequence),1))
+                # use sequence placeholder to fill in nans
+                sequence_x = np.full((max_seq, 1), np.nan, dtype=np.float32)
+                sequence_x[len(sequence_x)-len(sequence_encoded):] = sequence_encoded
+                # next character as target variable
+                label = text[min(text_length-1, j + seq_length)]
+                label_decoded = char_to_n[label]
+                # append results
+                sequences.append(sequence)
+                data_x.append(sequence_x)
+                data_y.append(label_decoded)
             # random stride between 1-6
             j+=int(np.random.uniform(stride[0], stride[1]+1))
     # Tensor structure
     data_x = np.reshape(data_x, (len(data_x), max_seq, 1))
     # Normalized data
     if normalized_by is not None:
-        data_x = data_x / float(normalized_by)
+        data_x = (data_x + 1) / float(normalized_by) # add delta so nans will be zero
     # replace nans by -1
     data_x[np.isnan(data_x)] = nans
     # target variable to categorical dummy
     data_y = np_utils.to_categorical(data_y)
     # Shuffle data:
-    data_x, data_y = shuffle(data_x, data_y)
+    data_x, data_y, sequences = shuffle(data_x, data_y, sequences)
     # output
     print('Outupt shape -', 'X:', data_x.shape, '- Y:', data_y.shape)
     size = data_x.nbytes*1e-6 + data_y.nbytes*1e-6
