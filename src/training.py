@@ -20,13 +20,15 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from src.utils import build_model, random_sentence, write_poem
+import sys
+sys.path.append('./src')
+from utils import build_model, random_sentence, write_poem
 
 # =============================================================================
 # Input arguments
 # =============================================================================
 # is it a test? if True only 25 songs are used
-TEST_MODE = True
+TEST_MODE = False
 
 # Where is the folder with all the corpus docs?
 CORPUS_PATH = './data/data_proccessed/NLP_data_poems_140'

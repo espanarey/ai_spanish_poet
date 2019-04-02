@@ -18,8 +18,10 @@ import pandas as pd
 import re
 import pickle
 import nltk
-from src.utils import read_corpus, merge_corpus
-from src.utils import vocab_mapping, corpus_split, build_data
+import sys
+sys.path.append('./src')
+from utils import read_corpus, merge_corpus
+from utils import vocab_mapping, corpus_split, build_data
 # =============================================================================
 # Input arguments
 # =============================================================================

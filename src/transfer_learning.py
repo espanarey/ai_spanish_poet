@@ -21,7 +21,9 @@ import pickle
 import matplotlib.pyplot as plt
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
-from src.utils import build_model, loss, random_sentence, write_poem
+import sys
+sys.path.append('./src')
+from utils import build_model, loss, random_sentence, write_poem
 
 
 # =============================================================================
