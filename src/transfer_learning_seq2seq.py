@@ -16,17 +16,12 @@ source: https://www.analyticsvidhya.com/blog/2018/03/text-generation-using-pytho
 # =============================================================================
 # Libraries
 # =============================================================================
-
 import numpy as np
 import pickle
-import re
 import matplotlib.pyplot as plt
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout, Masking
-from keras.layers.embeddings import Embedding
-from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import load_model
-from tensorflow.keras.losses import sparse_categorical_crossentropy
+from keras.callbacks import ModelCheckpoint
+from src.utils import build_model, loss, random_sentence, write_poem
 
 
 # =============================================================================
@@ -36,44 +31,50 @@ from tensorflow.keras.losses import sparse_categorical_crossentropy
 TEST_MODE = False
 
 # Where is the folder with all the corpus docs?
-CORPUS_PATH = './data/data_proccessed/NLP_data_love_160_seq2seq'
+CORPUS_PATH = './data/data_proccessed/NLP_data_love_14'
 # NLP
-MAX_SEQ = 160
+MAX_SEQ = 140
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-160_layers-3_encoding-256_batch-128_seq2seq'
-ENCODING = 256
+MODEL_NAME = 'seq-140_layers-3_encoding-256_batch-48'
+ENCODING_OUT = 256
+HIDDEN_UNITS = [1024, 1024, 768]
 EPOCHS = 15
-BATCH_SIZE = 16
-
+BATCH_SIZE = 48
 
 
 # =============================================================================
 # Load Data
 # =============================================================================
-
 # load data file
 with open(CORPUS_PATH + '.pickle', 'rb') as file:
     data = pickle.load(file)
 
 # unpack data dict
 print('unpack:', data.keys())
-for item in data.keys(): exec(item + " = eval('data[item]') ")
+# unpack elements
+corpus = data['corpus']
+words_mapping = data['words_mapping']
+train_x = data['train_x']
+train_y = data['train_y']
+test_x = data['test_x']
+test_y = data['test_y']
 
 # unpack words mapping
 print('unpack:', words_mapping.keys())
-for item in words_mapping.keys(): exec(item + " = eval('words_mapping[item]') ")
-
+characters = words_mapping['characters']
+n_to_char = words_mapping['n_to_char']
+char_to_n = words_mapping['char_to_n']
 
 # If it is a test mode just take first 10 batches of data
 if TEST_MODE:
     print("TEST MODE: ON")
     # small data sample
-    train_x = train_x[:BATCH_SIZE*20,:]
-    train_y = train_y[:BATCH_SIZE*20,:]
-    test_x = test_x[:BATCH_SIZE*5,:]
-    test_y = test_y[:BATCH_SIZE*5,:]
+    train_x = train_x[:BATCH_SIZE*5,:]
+    train_y = train_y[:BATCH_SIZE*5,:]
+    test_x = test_x[:BATCH_SIZE*2,:]
+    test_y = test_y[:BATCH_SIZE*2,:]
     EPOCHS = 1
 else:
     print("TEST MODE: OFF")
@@ -87,10 +88,6 @@ size = print(int(size), 'Megabytes')
 # =============================================================================
 # Load Model and Freeze layers
 # =============================================================================
-# Model loss
-def loss(y_true, y_pred):
-    return sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
-
 # load model & weights 
 model = load_model(str(MODEL_OUTPUT + MODEL_NAME + '.h5'), custom_objects={'loss': loss})
 
@@ -99,7 +96,7 @@ print('\n---\nModel network')
 print(model.summary())
 
 # Freeze all but last layer
-print('Frezz last 2 layers')
+print('Freeze last 2 layers')
 for layer in model.layers[:-2]:
     layer.trainable=False
 
@@ -111,19 +108,17 @@ for i,layer in enumerate(model.layers):
 # Train with love poems
 # =============================================================================
 # callbacks
-early_stop = EarlyStopping(monitor='val_loss', min_delta=0.01, patience=4, verbose=1)
 checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '_TL' +'.h5'),
-                             monitor='val_loss', verbose=1, save_best_only=True)
+                             monitor='loss', verbose=1, save_best_only=True)
+
+# samples to run. multiple of batch size
+sample_train = (len(train_x)//BATCH_SIZE)*BATCH_SIZE
 
 # Fit!
-model_history = model.fit(train_x, train_y,
+model_history = model.fit(train_x[:sample_train,:], train_y[:sample_train,:],
                           epochs = EPOCHS,
                           batch_size = BATCH_SIZE,
-                          validation_data = (test_x, test_y),
-                          callbacks = [early_stop, checkpoint])
-
-
-
+                          callbacks = [checkpoint])
 
 # Training history
 print(model_history.history.keys())
@@ -137,64 +132,18 @@ plt.legend(['train', 'test'], loc='upper left')
 plt.show()
 
 
-
 # =============================================================================
 # Test Example
 # =============================================================================
+# load model & weights 
+# model to batch size 1 for prediction
+model = build_model(batch_size = 1, 
+                    encoding_dim = [len(n_to_char), ENCODING_OUT],
+                    hidden_units = HIDDEN_UNITS,
+                    optimizer= 'adam')
 
-# Extract random sentence from corpus
-def random_sentence(corpus, min_seq=64, max_seq=128):
-    # use random sentence from corpus as seed
-    doc = np.random.choice(corpus, 1)[0]
-    text = doc['corpus']
-    text_lines = text.split('\n')
-    # select first lines till min_seq constraint is reached
-    length = 0
-    i=0
-    sequence = str()
-    while length <= min_seq:
-        sequence = sequence + text_lines[i] + '\n'
-        length = len(sequence)
-        i+=1
-    if length > max_seq:
-        sequence = sequence[:max_seq]
-    return text, sequence
-
-# predict next character
-def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128):
-    # cut sequence into max length allowed   
-    sequence = sequence[max(0, len(sequence)-max_seq):] 
-    # transform sentence to numeric
-    sequence_encoded = np.array([char_to_n[char] for char in sequence])
-    pred_encoded = model.predict(sequence_encoded)  
-    # last prediction in sequence
-    pred = pred_encoded[-1][0]
-    # from log probabilities to normalized probabilities
-    pred_prob = np.exp(pred)/np.sum(np.exp(pred))
-    # next char
-    pred_char = np.argmax(np.random.multinomial(1, pred_prob))
-    # to character
-    pred_char = n_to_char[pred_char]
-    return pred_char
-
-
-def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150):
-    poem = seed
-    # word count
-    word_counter = len(re.findall(r'\w+', poem))
-    # ends poem generator if max word is passed or poem end with final dot ($)
-    while (word_counter < max_words) | (poem[-1]=='$') | (len(poem) < 600):    
-        # Prediction next character
-        next_char = predict_next_char(poem,
-                                      n_to_char, char_to_n, model, max_seq)
-        # append
-        poem = poem + next_char
-        # update word count
-        word_counter = len(re.findall(r'\w+', poem))
-    # add signature
-    poem = poem + '\n\nEscrito por: AISP'
-    return poem
-        
+# load weights
+model.load_weights(str(MODEL_OUTPUT + MODEL_NAME  + '_TL' +'.h5'))
 
 # Generate poem
 print("\n\n---- Creative moment - I'm writting a poem")
@@ -203,10 +152,8 @@ text, sequence = random_sentence(corpus, min_seq=90, max_seq=MAX_SEQ)
 print('\nOriginal poem:\n\n', text)
 print('\nSeed Sentence:\n\n', sequence)
 
+print('\n\n\nWriting poem ... \n\n')
 poem = write_poem(sequence, model,  n_to_char, char_to_n,
-                  max_seq=MAX_SEQ, max_words=60)
+                  max_seq=MAX_SEQ, max_words=160)
 
 print('\nThis was an AI poem:\n\n', poem)
-
-
-

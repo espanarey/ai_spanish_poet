@@ -16,13 +16,11 @@ source: https://www.analyticsvidhya.com/blog/2018/03/text-generation-using-pytho
 # =============================================================================
 import numpy as np
 import pandas as pd
-import os
 import re
 import pickle
-from sklearn.utils import shuffle 
 import nltk
-
-
+from src.utils import read_corpus, merge_corpus
+from src.utils import vocab_mapping, corpus_split, build_data
 # =============================================================================
 # Input arguments
 # =============================================================================
@@ -32,46 +30,25 @@ TEST_MODE = False
 # Where is the folder with all the corpus docs?
 CORPUS_PATH = './data/DB/love poems/'
 # Load same word mapping form all poems
-DATA_POEMS_PATH = './data/data_proccessed/NLP_data_poems_160_seq2seq'
+DATA_POEMS_PATH = './data/data_proccessed/NLP_data_poems_140'
 
 # Split train/test
-SPLIT = .9
+# DO NOT SPLIT (few docs in corpus)
+SPLIT = 1
 
 # NLP
-MAX_SEQ = 160 # sequence length
-STRIDE = MAX_SEQ # without overlaping on sequences
-
+MAX_SEQ = 140 # sequence length
+STRIDE = [MAX_SEQ/2, MAX_SEQ] 
 
 # output path
 OUTPUT_PATH = './data/data_proccessed/'
-OUTPUT_FILE = 'NLP_data_love_160_seq2seq'
-
+OUTPUT_FILE = 'NLP_data_love_140'
 
 
 # =============================================================================
 # Read data
 # =============================================================================
-# read song corpus
-def read_corpus(path):
-    # list of files
-    files = os.listdir(path)
-    print('\nReading:', len(files), 'files')
-    # placeholder for results
-    corpus = []
-    # loop all files and read
-    for file in files:
-        with open(path + file, "rb") as text_file:
-            doc = text_file.read()
-            doc = doc.decode('latin-1')
-            # lower case
-            doc = doc.lower()
-            # remove leading, ending and duplicates whitespaces
-            doc = re.sub(' +', ' ', doc).strip()
-            corpus.append({'file': path + file,
-                           'corpus': doc})
-    return corpus
-
-# read all .txt lyrics files
+# read all .txt poems files
 corpus = read_corpus(CORPUS_PATH)
 
 # If it is a test mode just take first 25 songs
@@ -131,21 +108,11 @@ print('\Most common words:', '\nat least 4 digits:\n',
  
 
 ##### Clean less frecuent characters
-# unique characters count. character unique songs
-# put together all the text to take unique characters
-def merge_corpus(corpus):
-    all_text = str()
-    for x in corpus:
-        all_text = all_text + x['corpus']
-    print('Number of characters in corpus:', len(all_text))
-    return all_text
-
-# all songs as single string
+# all text as single string
 all_text = merge_corpus(corpus)
 # unique characters
 characters = sorted(list(set(all_text)))
 print('unique characters:', len(characters))
-
 
 # count of characters
 print('Number of appereance per unique character in corpus')
@@ -173,12 +140,10 @@ for doc in corpus:
     doc['corpus'] = re.sub(chars_remove, ' ', doc['corpus'])
     doc['corpus'] = re.sub(' +', ' ', doc['corpus']).strip()
 
-
 # line space: '\r\n ' '\r\n' to '\n', '\r\r\n'
 for doc in corpus:
     for pattern in ['\r\r\n', '\r\n ', '\r\n', '\n\n']:
         doc['corpus'] = re.sub(pattern, '\n', doc['corpus'])
-
 
 # add special charater for at the begining and final of text.
 # Model will learn when to start/end
@@ -196,10 +161,8 @@ print(''.join(characters))
 # =============================================================================
 # character/word mappings
 # =============================================================================
-
 # using same mappings of generic poems dataset
 # word mapping generated with build_data_poems.py
-
 # create dictionaries for character/number mapping
 print('\n---\nLoading word mapping dictionaries')
 
@@ -220,93 +183,28 @@ words_mapping = {'characters': characters,
                 'char_to_n': char_to_n}
 
 
-
 # =============================================================================
 # split train and test
 # =============================================================================
 # Train/Test per doc
-# create corpus index
-idx = [i for i in range(len(corpus))]
-# random random for train
-idx_train = np.random.choice(idx, size=int(len(corpus)*SPLIT), replace=False)
-# index not in train
-idx_test = [i for i in idx if i not in idx_train]
-# split corpus by index
-corpus_train = [corpus[i] for i in idx_train]
-corpus_test = [corpus[i] for i in idx_test]
-
-
-# Docs stats corpus
-print('\n--- Total docs in corpus', len(corpus))
-print('split in:')
-print('Train:', len(corpus_train))
-print('Test:', len(corpus_test))
-
-
+corpus_train, corpus_test = corpus_split(corpus, split=SPLIT)
 
 # =============================================================================
 # Build Tensor Data
 # =============================================================================
-
 # Create tensor data from corpus
-def build_data(corpus, char_to_n, max_seq = 100, stride = 100):
-    '''
-    Transform list of documents into tensor format to be fed to a lstm network
-    outout shape: (sequences, max_lenght)
-    max_seq: maximum length of sequence
-    stride: steps apply in rolling window over text. next windows could be next character(1) or 6 characters ahead
-    '''
-    # place holder to  save results
-    data_x = []
-    data_y = []
-    sequences = []
-    # target sequence is lagged by 1, hence sequence length = max_seq+1
-    max_seq+=1
-    stride+=1    
-    # for each document in corpus
-    for i in range(len(corpus)):
-        if (i % max(1, int(len(corpus)/10)) == 0):
-            print('\n--- Progress %:{0:.2f}'.format(i/len(corpus)))
-        text = corpus[i]['corpus']
-        text_length = len(text)
-        # iterate for all text in rolling windows of size max_seq
-        j = max_seq
-        while j < text_length + stride:
-            k_to = min(j, text_length) # 
-            k_from = (k_to - max_seq)            
-            #print(j, ':', k_from, '-', k_to)
-            #♠ slice text
-            sequence = text[k_from:k_to] 
-            # characters to int
-            sequence_encoded = np.array([char_to_n[x] for x in sequence]) 
-            # append results
-            sequences.append(sequence)
-            data_x.append(sequence_encoded[:-1])
-            data_y.append(sequence_encoded[1:])
-            # random stride between 1-6
-            j+= stride + 1           
-    # Tensor structure
-    data_x = np.array(data_x) 
-    data_y = np.array(data_y) 
-    
-    # Shuffle data
-    data_x, data_y = shuffle(data_x, data_y)
-    # output
-    print('Outupt shape -', 'X:', data_x.shape, '- Y:', data_y.shape)
-    size = data_x.nbytes*1e-6 + data_y.nbytes*1e-6
-    size = print(int(size), 'Megabytes')
-    return data_x, data_y
-
-# Train datasets
 print('\n---\nBuild Tensor data')
-
+# Train datasets
 print('\nBuild Train data:')
 train_x, train_y = build_data(corpus_train, char_to_n, 
                               max_seq = MAX_SEQ, stride=STRIDE)
 
-print('\nBuild Test data:')
-test_x, test_y = build_data(corpus_test, char_to_n, 
-                              max_seq = MAX_SEQ, stride=STRIDE)
+if len(corpus_test):
+    print('\nBuild Test data:')
+    test_x, test_y = build_data(corpus_test, char_to_n, 
+                                  max_seq = MAX_SEQ, stride=STRIDE)
+else:
+    test_x, test_y = None, None
 
 # =============================================================================
 # Save proccess data
