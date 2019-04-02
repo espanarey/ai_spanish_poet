@@ -4,64 +4,156 @@
 
 * Note: above love poem was written by an Artificial Intelligence algorithm
 
-## Deep learning model to generate spanish love poems
+## Deep learning model to generate Spanish love poems
 
-This a  mini-project developed for a "Sant Jordi" poem contest hosted at my company.
+This a  mini-project developed for a "Sant Jordi" writing contest hosted at my company.
 
-The idea is to train a deep learning model to write spanish love poems
-First, the model will be tranined with thousands of famous spanish poems
-Then, train it to write love theme poems trough transfer learning technique
+The idea is to train a deep learning model to write Spanish love poems
+First, the model will be trained with thousands of famous Spanish poems
+Then, the model will be tuned to write love theme poems trough transfer
+learning technique with a small dataset containing only love poems
 
 ## First at all, what is Sant Jordi's day?
 **It is a celebration of culture and love, represented by books and roses**
 
 Sant Jordi, or St. George, is the patron saint of Catalonia.
-La Diada de Sant Jordi is celebrated every April 23, it is a festive occasion that, over the years, has become a celebration of Catalan culture.
+La Diada de Sant Jordi is celebrated every April 23, it is a festive occasion that,
+ over the years, has become a celebration of Catalan culture.
 
-It is the most romantic day of the year when everyone, not just couples, give a rose or a book to one another and fill every street corner with hope, happiness and love.
+It is the most romantic day of the year when everyone, not just couples, give a
+rose or a book to one another and fill every street corner with hope, happiness and love.
 
 [Read More](http://lameva.barcelona.cat/culturapopular/en/festivals-and-traditions/sant-jordi)
 
 
 ## What is the contest about?
-One month prior La Diada de Sant Jordi's day a writing contest was opened in my company to celebrate it
-However there was a tricky point, the theme was about artificial Intelligence. That means all submissions must contain an explicit or implicit reference to this concept or technology
+One month prior La Diada de Sant Jordi's day a writing contest was opened at my
+company to celebrate this festive day.
+However there was a tricky point, the theme was about artificial Intelligence.
+That means all submissions must contain an explicit or implicit reference to this concept or technology
 
-The prize awards were good, 150€ for the winner so, I decided to take part in the contest. As I'm not a good writer but I work with AI models, I though to put in practice some of my NLP and DL skills in practice.
+The prize awards were good, 150€ for the winner so, I decided to take part in the contest.
+As I'm not a good writer but I work with AI models, I though to put in practice
+some of my Natural Language Processing (NLP) and Deep Learning (DL) skills in practice.
 
 
 ## How the AI poet was trained?
-General description of the project structure
-how to run it?
+The model is a character-based, that means it will be train to infer the next character
+of a sequence knowing the last n characters in the sentence.
+```
+input = 'hello worl' -> output = 'd'
+````
+This is a very complicated task as the model will have to learn not only the art of
+poetry but also the meaning of a sequence of words and the Spanish grammar from scratch.
+
+The project is organized as the below structure
+
+- ./data/
+  - DB/ : *raw data*
+  - data_processed/ : *clean corpus to train model*
+- ./src/
+  - training.py *first stage model trained of general poems*
+  - transfer_learning.py *model tuned on love poems*
+- ./models/ : *placeholder to save model network and its weights*
+
+The **AI Spanish Poet** project can be reproduced by running the following scripts in that order
+
+`python build_data_poems_seq2seq.py`
+`python build_data_love_seq2seq.py`
+a pickle file will be generated for each dataset (general poems and love poems)
+with is respective corpus, train and test data sequences.
+
+`python training_seq2seq.py`
+Using general poems sequences a **LSTM** network is trained
+
+`python transfer_learning_seq2seq.py`
+**LSTM** network is finetune with the love poems corpus
 
 
 ## Data
-webscraping and data insights
+As any artificial intelligence algorithm, the data is the fuel to feed the model.
+I could not find any dataset with spanish poems available in the web as compared to
+the famous Shakespare dataset available in english. Therefore a webscraping was performed
+in order to create the spanish dataset.
+Fortunately, a total of **13,218** poems were found - after running a the `webscraping.py`
+algorithm in only one website - of which **80** are specifically classified as
+ "romantic poems"
 
+Poems includes authors such as: Pablo Neruda, Mario Benedetti, Gabriela Mistral,
+Rubén Darío, Francisco de Quevedo, among other 1,300 more poets
+
+The `build_data_poems_seq2seq.py` script applies basic NLP text cleansing, removing docs
+too small or big and keeping only most popular characters.
+After cleansing the summary of the corpus is:
+  - 45 unique characters `¡!(),-.:;¿?abcdefghijklmnopqrstuvwxyzáéíñóú`
+  - 4,917,888 total characters
+  - 55,358 unique words
+
+* Most popular words:
+
+*At least 4 digits*
+| word   | count |
+|--------|-------|
+| como   | 5,760 |
+| para   | 4,043 |   
+| cuando | 2,371 |   
+| amor   | 2,281 |
+| sobre  | 2,188 |  
+| noche  | 2,076 |  
+| ojos   | 1,999 |
+
+*At least 5 digits*
+| word    | count |   
+|---------|-------|
+| tiempo  | 1,530 |
+| porque  | 1,405 |   
+| corazón | 2,371 |   
+| siempre | 1,241 |
+| cuerpo  | 1,155 |  
+| muerte  | 1,143 |  
+| tierra  | 1,132 |
+
+### Tensor data
+corpus is divided into small sentences (sequence) of text to be fed into the model
+
+`Train data shape - X: (47189, 100) - Y: (47189, 100)` 
 
 ## Training with general theme
-model iteration and final network
+One of the most difficult problems in data science filed is the time dependent events.
+Sales forecasting, stock markets' prediction or speech recognition are just few examples
+of this type of problems.
+
+A text generator algorithm can be seen as a stream of characters lined up one
+after another, where the challenge is to predict the next character. this is a difficult
+challenge to solve as just one wrong prediction will make the entire text meaningless.
+
+In recent breakthroughs in deep learning field, Long-Short Term Memory networks (LSTMs)
+are the cutting-edge type of architecture used for almost any time sequence type of problem
+
+Therefore a LSTM have been deployed on the **AI spanish Poet** algorithm.
+A snapshot of the model can be found below
 
 ```python
+# build model
 model = Sequential()
-# Mask parts of the lookback period that are all zeros (i.e., unobserved) so they don't skew the model
-model.add(Masking(mask_value=-1., input_shape=(train_x.shape[1], train_x.shape[2])))
+# embeding
+model.add(Embedding(input_dim = len(n_to_char), output_dim = ENCODING))
 # layer 1
-model.add(LSTM(HIDDEN_NEURONS, return_sequences=True))
-model.add(Dropout(0.2))
+model.add(LSTM(1024, return_sequences=True, consume_less='gpu',
+               dropout=0.2, recurrent_dropout=0.1))
 # layer 2
-model.add(LSTM(HIDDEN_NEURONS, return_sequences=True)))
-model.add(Dropout(0.2))
+model.add(LSTM(512, return_sequences=True, consume_less='gpu',
+               dropout=0.2, recurrent_dropout=0.1))
 # layer 3
-model.add(LSTM(HIDDEN_NEURONS))
-model.add(Dropout(0.2))
+model.add(LSTM(512, return_sequences=True, consume_less='gpu',
+               dropout=0.2, recurrent_dropout=0.1))
 # Final layer
-model.add(Dense(train_y.shape[1], activation='softmax'))
+model.add(Dense(len(n_to_char)))
 # compile
-model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
+model.compile(loss = loss,
+              optimizer = 'adam')
 ```
+
 
 ## Transfer Learning with love poems
 improvements comparison of baseline model vs love model
@@ -71,3 +163,7 @@ improvements comparison of baseline model vs love model
 (some code)
 
 (.gif console python input sentence command)
+
+## Sources:
+https://www.tensorflow.org/alpha/tutorials/sequences/text_generation
+https://www.analyticsvidhya.com/blog/2018/03/text-generation-using-python-nlp/
