@@ -33,17 +33,17 @@ from utils import build_model, loss, random_sentence, write_poem
 TEST_MODE = False
 
 # Where is the folder with all the corpus docs?
-CORPUS_PATH = './data/data_proccessed/NLP_data_love_14'
+CORPUS_PATH = './data/data_proccessed/NLP_data_love_140'
 # NLP
-MAX_SEQ = 140
+MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-140_layers-3_encoding-256_batch-48'
-ENCODING_OUT = 256
-HIDDEN_UNITS = [1024, 1024, 768]
+MODEL_NAME = 'seq-120_layers-3-1024_encoding-256_batch-256'
+ENCODING_OUT = 92
+HIDDEN_UNITS = [1024, 1024, 1024]
 EPOCHS = 15
-BATCH_SIZE = 48
+BATCH_SIZE = 32
 
 
 # =============================================================================
@@ -91,11 +91,15 @@ size = print(int(size), 'Megabytes')
 # Load Model and Freeze layers
 # =============================================================================
 # load model & weights 
-model = load_model(str(MODEL_OUTPUT + MODEL_NAME + '.h5'), custom_objects={'loss': loss})
+# model to batch size 1 for prediction
+model = build_model(batch_size = BATCH_SIZE, 
+                    encoding_dim = [len(n_to_char), ENCODING_OUT],
+                    hidden_units = HIDDEN_UNITS,
+                    optimizer= 'adam')
 
-# Model Summary 
-print('\n---\nModel network')
-print(model.summary())
+# load weights
+print("\n\n---- Loading AI model\n\n")
+model.load_weights(str(MODEL_OUTPUT + MODEL_NAME + '.h5'))
 
 # Freeze all but last layer
 print('Freeze last 2 layers')
@@ -110,8 +114,9 @@ for i,layer in enumerate(model.layers):
 # Train with love poems
 # =============================================================================
 # callbacks
-checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '_TL' +'.h5'),
-                             monitor='loss', verbose=1, save_best_only=True)
+checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '_TL_ckpt' +'.h5'),
+                             save_best_only=True,
+                             monitor='loss', verbose=1, period=3)
 
 # samples to run. multiple of batch size
 sample_train = (len(train_x)//BATCH_SIZE)*BATCH_SIZE
@@ -126,13 +131,16 @@ model_history = model.fit(train_x[:sample_train,:], train_y[:sample_train,:],
 print(model_history.history.keys())
 # summarize history for loss
 plt.plot(model_history.history['loss'])
-plt.plot(model_history.history['val_loss'])
+#plt.plot(model_history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+#plt.legend(['train', 'test'], loc='upper left')
 plt.show()
 
+# save final model
+model.save(str(MODEL_OUTPUT + MODEL_NAME + '_TL' + '.h5'))
+print('Model saved in: ', str(MODEL_OUTPUT + MODEL_NAME + '_TL' + '.h5'))
 
 # =============================================================================
 # Test Example

@@ -31,17 +31,17 @@ from utils import build_model, random_sentence, write_poem
 TEST_MODE = False
 
 # Where is the folder with all the corpus docs?
-CORPUS_PATH = './data/data_proccessed/NLP_data_poems_140'
+CORPUS_PATH = './data/data_proccessed/NLP_data_poems_120_no-split'
 # NLP
-MAX_SEQ = 100
+MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-140_layers-3_encoding-256_batch-48'
-ENCODING_OUT = 256
-HIDDEN_UNITS = [1024, 1024, 768]
-EPOCHS = 100
-BATCH_SIZE = 48
+MODEL_NAME = 'seq-120_layers-3-1024_encoding-256_batch-256'
+ENCODING_OUT = 92
+HIDDEN_UNITS = [1024, 1024, 1024]
+EPOCHS = 30
+BATCH_SIZE = 256
 
 
 # =============================================================================
@@ -97,36 +97,40 @@ model = build_model(batch_size = BATCH_SIZE,
 
 # =============================================================================
 # Training
-# =============================================================================
+# ===========================================================period=3==================
 # callbacks
 early_stop = EarlyStopping(monitor='val_loss', min_delta=0.01, patience=5, verbose=1)
 
 # save best
-checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '.h5'),
+checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '_ckpt.h5'),
                              save_best_only=True, 
                              monitor='val_loss', verbose=1, period=3)
 
 # samples to run. multiple of batch size
 sample_train = (len(train_x)//BATCH_SIZE)*BATCH_SIZE
-sample_test = (len(test_x)//BATCH_SIZE)*BATCH_SIZE
+#sample_test = (len(test_x)//BATCH_SIZE)*BATCH_SIZE
 
 # Fit!
 model_history = model.fit(train_x[:sample_train,:], train_y[:sample_train,:],
                           epochs = EPOCHS,
                           batch_size = BATCH_SIZE,
-                          validation_data = (test_x[:sample_test,:], test_y[:sample_test,:]),
-                          callbacks = [early_stop, checkpoint])
+                          #validation_data = (test_x[:sample_test,:], test_y[:sample_test,:]),
+                          callbacks = [checkpoint]) #, early_stop])
 
 # Training history
 print(model_history.history.keys())
 # summarize history for loss
 plt.plot(model_history.history['loss'])
-plt.plot(model_history.history['val_loss'])
+#plt.plot(model_history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+#plt.legend(['train', 'test'], loc='upper left')
 plt.show()
+
+# save final model
+model.save(str(MODEL_OUTPUT + MODEL_NAME + '.h5'))
+print('Model saved in: ', str(MODEL_OUTPUT + MODEL_NAME + '.h5'))
 
 
 # =============================================================================

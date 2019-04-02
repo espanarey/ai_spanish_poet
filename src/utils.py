@@ -18,7 +18,6 @@ from keras.layers import Dense, LSTM
 from keras.layers.embeddings import Embedding
 from tensorflow.keras.losses import sparse_categorical_crossentropy
 
-
 # =============================================================================
 # Read docs as corpus
 # =============================================================================
@@ -125,7 +124,7 @@ def build_data(corpus, char_to_n, max_seq = 100, stride = [1,6]):
         text_length = len(text)
         # iterate for all text in rolling windows of size max_seq
         j = max_seq
-        while j < text_length + stride[1]:
+        while j < text_length + stride[0]:
             k_to = min(j, text_length) # 
             k_from = (k_to - max_seq)            
             #print(j, ':', k_from, '-', k_to)
@@ -225,11 +224,15 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128):
     pred_prob = np.exp(pred)
     pred_prob = np.exp(pred)/(np.sum(np.exp(pred))*1.0001)
     np.sum(pred_prob)
-    # next char
+    # get index of character  based on probabilities
+    # add an extra digit (issue from np.random.multinomial)
     pred_char = np.argmax(np.random.multinomial(1, np.append(pred_prob, .0)))
-    # to character
-    pred_char = n_to_char[pred_char]
-    pred_char
+    # if prediction do not match vocabulary. do nothing
+    if pred_char > len(n_to_char)-1:
+        pred_char = ''
+    else:
+        # to character
+        pred_char = n_to_char[pred_char]
     return pred_char
 
 
@@ -252,6 +255,8 @@ def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150):
         final = poem[-1] != '$'
         word_counter = len(re.findall(r'\w+', poem)) < max_words        
     # add signature
-    poem = poem + '\n\nEscrito por: AISP'
+    signature = '\n\nEscrito por: AISP\n\n'
+    print(signature, end ="")
+    poem = poem + signature
     return poem
         

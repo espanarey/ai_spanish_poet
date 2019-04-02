@@ -32,15 +32,15 @@ TEST_MODE = False
 CORPUS_PATH = './data/DB/spanish poems/'
 
 # Split train/test
-SPLIT = .9
+SPLIT = 1
 
 # NLP
-MAX_SEQ = 140 # sequence length
+MAX_SEQ = 120 # sequence length
 STRIDE = [MAX_SEQ/2, MAX_SEQ] 
 
 # output path
 OUTPUT_PATH = './data/data_proccessed/'
-OUTPUT_FILE = 'NLP_data_poems_140'
+OUTPUT_FILE = 'NLP_data_poems_120_no-split'
 
 
 

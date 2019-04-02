@@ -32,19 +32,19 @@ TEST_MODE = False
 # Where is the folder with all the corpus docs?
 CORPUS_PATH = './data/DB/love poems/'
 # Load same word mapping form all poems
-DATA_POEMS_PATH = './data/data_proccessed/NLP_data_poems_140'
+DATA_POEMS_PATH = './data/data_proccessed/NLP_data_poems_120_no-split'
 
 # Split train/test
 # DO NOT SPLIT (few docs in corpus)
 SPLIT = 1
 
 # NLP
-MAX_SEQ = 140 # sequence length
+MAX_SEQ = 120 # sequence length
 STRIDE = [MAX_SEQ/2, MAX_SEQ] 
 
 # output path
 OUTPUT_PATH = './data/data_proccessed/'
-OUTPUT_FILE = 'NLP_data_love_140'
+OUTPUT_FILE = 'NLP_data_love_120'
 
 
 # =============================================================================
