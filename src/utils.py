@@ -49,6 +49,13 @@ def merge_corpus(corpus):
     print('Number of characters in corpus:', len(all_text))
     return all_text
 
+# valid file name
+def valid_name(value):
+    value = re.sub('[^\w\s-]', '', value).strip().lower()
+    value = re.sub('[-\s]+', '-', value)
+    return value
+
+
 # =============================================================================
 # character/word mappings
 # =============================================================================
@@ -209,7 +216,10 @@ def random_sentence(corpus, min_seq=64, max_seq=128):
     return text, sequence
 
 # predict next character
-def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128):
+def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, creativity=3):
+    '''
+    creativity: 1 the most.
+    '''
     # cut sequence into max length allowed   
     sequence = sequence[max(0, len(sequence)-max_seq):].lower() 
     # transform sentence to numeric
@@ -226,17 +236,22 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128):
     np.sum(pred_prob)
     # get index of character  based on probabilities
     # add an extra digit (issue from np.random.multinomial)
-    pred_char = np.argmax(np.random.multinomial(1, np.append(pred_prob, .0)))
+    pred_char = np.random.multinomial(creativity, np.append(pred_prob, .0))
+    # character with highest aperances
+    chars_max = pred_char==pred_char.max()
+    # get index of those characters
+    chars_max_idx = [i for i in range(len(pred_char)) if chars_max[i]]
+    char_idx = np.random.choice(chars_max_idx, 1)[0]
     # if prediction do not match vocabulary. do nothing
-    if pred_char > len(n_to_char)-1:
-        pred_char = ''
+    if char_idx > len(n_to_char)-1:
+        char_idx = ''
     else:
         # to character
-        pred_char = n_to_char[pred_char]
-    return pred_char
+        char = n_to_char[char_idx]
+    return char
 
 
-def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150):
+def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150, creativity=3):
     # start poem with the seed
     poem = seed
     print(poem, end ="")
@@ -246,8 +261,8 @@ def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150):
     # ends poem generator if max word is passed or poem end with final dot ($)
     while (word_counter & final):    
         # Prediction next character
-        next_char = predict_next_char(poem,
-                                      n_to_char, char_to_n, model, max_seq)
+        next_char = predict_next_char(poem, n_to_char, char_to_n, 
+                                      model, max_seq, creativity)
         print(next_char, end ="")
         # append
         poem = poem + next_char

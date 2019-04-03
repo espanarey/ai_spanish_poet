@@ -13,12 +13,13 @@ Create Spanish love poems from a seed from user
 # =============================================================================
 # Libraries
 # =============================================================================
+import warnings
+warnings.filterwarnings("ignore")
 import pickle
 import sys
 sys.path.append('./src')
-from utils import build_model, write_poem
-import warnings
-warnings.filterwarnings("ignore")
+from utils import build_model, write_poem, valid_name
+
 
 # =============================================================================
 # Input arguments
@@ -33,11 +34,14 @@ MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-120_layers-3_encoding-256_batch-128'
-ENCODING_OUT = 256
-HIDDEN_UNITS = [1024, 768, 512]
+MODEL_NAME = 'seq-120_layers-3-1024_encoding-92_batch-256_TL'
+ENCODING_OUT = 92
+HIDDEN_UNITS = [1024, 1024, 1024]
 MAX_WORDS = 400
 
+# How creative do you want the model to be
+CREATIVITY = 5 # 1: high, 10: conservative
+PATH_POEMS = 'poems_written/'
 
 # =============================================================================
 # Load Data
@@ -74,8 +78,14 @@ while True:
         # create poem
         print("\n\n---- Creative moment - I'm thinking ...")
         print('\n\n\nWriting poem ... \n\n')
-        poem = write_poem(seed, model,  n_to_char, char_to_n,
-                          max_seq=MAX_SEQ, max_words=MAX_WORDS)
+        poem = write_poem(seed, model, n_to_char, char_to_n,
+                          max_seq = MAX_SEQ, max_words = MAX_WORDS, 
+                          creativity=CREATIVITY)
+        # write poem as .txt in putpus
+        filename = valid_name(poem.split('\n')[0])
+        with open(PATH_POEMS + filename + '.txt', "w") as text_file:
+                    text_file.write(poem)
+        # another poem?
         repeat = input('Do you want another poem? (Y/N)')
         if repeat.lower() == 'n':
             print("Bye")
