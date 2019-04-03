@@ -37,7 +37,7 @@ MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-120_layers-3-1024_encoding-256_batch-256'
+MODEL_NAME = 'seq-120_layers-3-1024_encoding-92_batch-256'
 ENCODING_OUT = 92
 HIDDEN_UNITS = [1024, 1024, 1024]
 EPOCHS = 30
@@ -103,8 +103,8 @@ early_stop = EarlyStopping(monitor='val_loss', min_delta=0.01, patience=5, verbo
 
 # save best
 checkpoint = ModelCheckpoint(str(MODEL_OUTPUT + MODEL_NAME + '_ckpt.h5'),
-                             save_best_only=True, 
-                             monitor='val_loss', verbose=1, period=3)
+                             # save_best_only=True, monitor='val_loss',
+                             verbose=1, period=3)
 
 # samples to run. multiple of batch size
 sample_train = (len(train_x)//BATCH_SIZE)*BATCH_SIZE

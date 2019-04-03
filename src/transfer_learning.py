@@ -39,10 +39,10 @@ MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-120_layers-3-1024_encoding-256_batch-256'
+MODEL_NAME = 'seq-120_layers-3-1024_encoding-92_batch-256'
 ENCODING_OUT = 92
 HIDDEN_UNITS = [1024, 1024, 1024]
-EPOCHS = 15
+EPOCHS = 10
 BATCH_SIZE = 32
 
 
@@ -109,6 +109,10 @@ for layer in model.layers[:-2]:
 for i,layer in enumerate(model.layers):    
   print('Layer id:', i, layer.name, 'Trainable:', layer.trainable)
   
+# compile again the model
+model.compile(loss = loss,
+              optimizer = 'adam')
+
 
 # =============================================================================
 # Train with love poems
