@@ -1,23 +1,27 @@
 # AI Spanish Poet
 
+![gif](./www/poesia_artificial.gif "demo")
+
 ---
-> Su cuerpo es una flor con el espacio
+> La poesía artificial de la vida,
 >
-> que se hace en la noche como un lirio
+> y el río de la esperanza me apaga
 >
-> sobre el aire de este punto establecido
+> y se consume el tiempo de la muerte.
 >
-> como el himno de su pecho
+> Todo es el deseo de la piel de la tierra.
 >
-> o en la soledad de las cosas como un piano de palabras
+> La misma esperanza de las almas
 >
-> que tanto amor es mi amor.
+> con la boca de su mano hermosa.
 >
-> Amor que al cabo muere,
-> 
-> tan sabrosa, tan lejos del destino
+> Esta noche puede amarte la noche.
 >
-> Escrito por: AISP
+> y el corazón aprendió la pena de la mente.
+>
+> El corazón de la vida es su vientre.
+>
+> AI.S.P
 
 ---
 
@@ -78,7 +82,7 @@ The project is organized as the below structure
   - utils.py *common function used in train and inference scripts*
 - ./models/ : *placeholder to save model network and its weights*
 
-The **AI Spanish Poet** project can be reproduced by running the following scripts in that order
+The **AI Spanish Poet** project can be reproduced running the following scripts
 
 **1. Build Data**
 
@@ -179,38 +183,68 @@ are the cutting-edge type of architecture used for almost any time sequence type
 Therefore a LSTM have been deployed on the **AI spanish Poet** algorithm.
 A snapshot of the model can be found below
 
-```python
-# build model
-model = Sequential()
-# embeding
-model.add(Embedding(input_dim = len(n_to_char), output_dim = ENCODING))
-# layer 1
-model.add(LSTM(1024, return_sequences=True, consume_less='gpu',
-               dropout=0.2, recurrent_dropout=0.1))
-# layer 2
-model.add(LSTM(512, return_sequences=True, consume_less='gpu',
-               dropout=0.2, recurrent_dropout=0.1))
-# layer 3
-model.add(LSTM(512, return_sequences=True, consume_less='gpu',
-               dropout=0.2, recurrent_dropout=0.1))
-# Final layer
-model.add(Dense(len(n_to_char)))
-# compile
-model.compile(loss = loss,
-              optimizer = 'adam')
-```
-Total Params: 15,523,886
-
+![model](./www/model.jpg "model")
 
 
 ## Transfer Learning with love poems
-improvements comparison of baseline model vs love model
+After first training with the generic Spanish poems data set. Last 2 layers of the model were re-trained with the love data set to fine tune predictions into a romantic theme
 
+![TL](./www/TL.jpg "TL")
 
 ## Generating poems
-(some code)
+The model will use a short sentence as seed, or nothing, to start writing the poem.
 
-(.gif console python input sentence command)
+It will predict the next character based on sequence of letters seen so far.
+
+To make the model more creative next character prediction is based on a categorical probability distributions of all characters instead of taking the digit with the highest probability.
+
+Level of creativity could be adjust with the `creativity` param.
+
+Prediction is done in a loop until it reaches the 'end of poem' character ($)
+
+```python
+# predict next character
+def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, creativity=3):
+    '''
+    sequence: input sequence seen so far. (if blank model will start with a random character)
+    n_to_char, char_to_n: Vocabulary dictionaries used in training
+    model: trained model weights
+    max_seq: maximum number of characters to seen in one sequence (use the same sequence as model)
+    creativity: 1: super creative, 10: Conservative.
+    '''
+    # start with a random character
+    if len(sequence)==0:
+        sequence = '\n'
+    # cut sequence into max length allowed   
+    sequence = sequence[max(0, len(sequence)-max_seq):].lower()
+    # transform sentence to numeric
+    sequence_encoded = np.array([char_to_n[char] for char in sequence])
+    # reshape for single batch predicton
+    sequence_encoded = np.reshape(sequence_encoded, (1, len(sequence_encoded)))
+    # model prediction
+    pred_encoded = model.predict(sequence_encoded)  
+    # last prediction in sequence
+    pred = pred_encoded[0][-1]
+    # from log probabilities to normalized probabilities
+    pred_prob = np.exp(pred)
+    pred_prob = np.exp(pred)/(np.sum(np.exp(pred))*1.0001)
+    # get index of character  based on probabilities
+    # add an extra digit (issue from np.random.multinomial)
+    pred_char = np.random.multinomial(creativity, np.append(pred_prob, .0))
+    # character with highest aperances
+    chars_max = pred_char==pred_char.max()
+    # get index of those characters
+    chars_max_idx = [i for i in range(len(pred_char)) if chars_max[i]]
+    char_idx = np.random.choice(chars_max_idx, 1)[0]
+    # if prediction do not match vocabulary. do nothing
+    if char_idx > len(n_to_char)-1:
+        char_idx = ''
+    else:
+        # to character
+        char = n_to_char[char_idx]
+    return char
+  ```
+
 
 ## Sources:
 https://www.tensorflow.org/alpha/tutorials/sequences/text_generation
