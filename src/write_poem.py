@@ -34,13 +34,13 @@ MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-120_layers-3-1024_encoding-92_batch-256_TL'
-ENCODING_OUT = 92
-HIDDEN_UNITS = [1024, 1024, 1024]
-MAX_WORDS = 400
+MODEL_NAME = 'seq-120_layers-5-512_encoding-128_batch-256_TL'
+ENCODING_OUT = 128
+HIDDEN_UNITS = [512, 512, 512, 512, 512]
+MAX_WORDS = 200
 
 # How creative do you want the model to be
-CREATIVITY = 5 # 1: high, 10: conservative
+CREATIVITY = 7 # 1: high creativity , 10: conservative
 PATH_POEMS = 'poems_written/'
 
 # =============================================================================
@@ -86,7 +86,7 @@ while True:
         with open(PATH_POEMS + filename + '.txt', "w") as text_file:
                     text_file.write(poem)
         # another poem?
-        repeat = input('Do you want another poem? (Y/N)')
+        repeat = input('Do you want another poem? (Y/N) ')
         if repeat.lower() == 'n':
             print("Bye")
             break

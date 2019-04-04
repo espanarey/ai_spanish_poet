@@ -37,9 +37,9 @@ MAX_SEQ = 120
 
 # Network params
 MODEL_OUTPUT = './models/'
-MODEL_NAME = 'seq-120_layers-3-1024_encoding-92_batch-256'
-ENCODING_OUT = 92
-HIDDEN_UNITS = [1024, 1024, 1024]
+MODEL_NAME = 'seq-120_layers-5-512_encoding-128_batch-256'
+ENCODING_OUT = 128
+HIDDEN_UNITS = [512, 512, 512, 512, 512]
 EPOCHS = 30
 BATCH_SIZE = 256
 

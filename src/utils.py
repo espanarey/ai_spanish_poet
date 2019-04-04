@@ -218,8 +218,15 @@ def random_sentence(corpus, min_seq=64, max_seq=128):
 # predict next character
 def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, creativity=3):
     '''
-    creativity: 1 the most.
+    sequence: input sequence seen so far. (if blank model will start with a random character)
+    n_to_char, char_to_n: Vocabulary dictionaries used in training
+    model: trained model weights
+    max_seq: maximum number of characters to seen in one sequence (use the same sequence as model)
+    creativity: 1: super creative, 10: Conservative.
     '''
+    # start with a random character
+    if len(sequence)==0:
+        sequence = '\n'
     # cut sequence into max length allowed   
     sequence = sequence[max(0, len(sequence)-max_seq):].lower() 
     # transform sentence to numeric
@@ -233,7 +240,6 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, creati
     # from log probabilities to normalized probabilities
     pred_prob = np.exp(pred)
     pred_prob = np.exp(pred)/(np.sum(np.exp(pred))*1.0001)
-    np.sum(pred_prob)
     # get index of character  based on probabilities
     # add an extra digit (issue from np.random.multinomial)
     pred_char = np.random.multinomial(creativity, np.append(pred_prob, .0))
@@ -243,11 +249,8 @@ def predict_next_char(sequence, n_to_char, char_to_n, model, max_seq=128, creati
     chars_max_idx = [i for i in range(len(pred_char)) if chars_max[i]]
     char_idx = np.random.choice(chars_max_idx, 1)[0]
     # if prediction do not match vocabulary. do nothing
-    if char_idx > len(n_to_char)-1:
-        char_idx = ''
-    else:
-        # to character
-        char = n_to_char[char_idx]
+    if char_idx > len(n_to_char)-1: char_idx = ''
+    char = n_to_char[char_idx]
     return char
 
 
@@ -270,7 +273,7 @@ def write_poem(seed, model,  n_to_char, char_to_n, max_seq=128, max_words=150, c
         final = poem[-1] != '$'
         word_counter = len(re.findall(r'\w+', poem)) < max_words        
     # add signature
-    signature = '\n\nEscrito por: AISP\n\n'
+    signature = '\n\nAI.S.P\n\n'
     print(signature, end ="")
     poem = poem + signature
     return poem
