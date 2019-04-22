@@ -101,7 +101,7 @@ model = build_model(vocabulary_size=VOCABULARY_SIZE, embedding_dim=EMBEDDING_DIM
                     rnn_layers=RNN_LAYERS, batch_size=1)
 
 
-model.load_weights(MODELS_PATH + 'model_04__epoch_14__loss_0.9475226238756985')
+model.load_weights(MODELS_PATH + 'models_name')  # TODO: substitute by your model's name
 model.build(tf.TensorShape([1, None]))
 model.summary()
 
@@ -113,7 +113,7 @@ with open(DATA_PATH + '.pickle', 'rb') as file:
 map_n_to_word = data['words_mapping']
 del data
 
-poem_seed = ['el', 'amor', 'todo', 'lo', 'poder', 'y']
+poem_seed = ['el', 'amor', 'todo', 'lo', 'poder', 'y']  # TODO: Starting seed, may be another
 
 
 print(generate_text(model=model, map_id_word=map_n_to_word, start_words=poem_seed))
